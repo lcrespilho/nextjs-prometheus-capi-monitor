@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { recordSuccessfulCapiRequest, recordFailedCapiRequest } from '@/lib/metrics'
 
 export async function POST(request: Request) {
+  const startTime = performance.now()
   const body = await request.json()
+  const eventName = body.event_name || 'unknown'
+
   const cookieStore = cookies()
 
   // Try to get the fbp cookie (Browser ID) for better matching
@@ -14,13 +18,13 @@ export async function POST(request: Request) {
   const userAgent = request.headers.get('user-agent') || ''
 
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  const token = process.env.FB_ACCESS_TOKEN
+  const token = process.env.FB_ACCESS_TOKEN_APP
 
   // Construct the CAPI Payload
   const payload = {
     data: [
       {
-        event_name: body.event_name,
+        event_name: eventName,
         event_time: body.event_time || Math.floor(Date.now() / 1000),
         event_id: body.event_id, // Important for deduplication // TODO: generate
         event_source_url: body.event_source_url,
@@ -44,14 +48,19 @@ export async function POST(request: Request) {
     })
 
     const data = await response.json()
+    const duration = (performance.now() - startTime) / 1000 // Convert to seconds
 
     if (!response.ok) {
       console.error('Facebook API Error:', data)
+      recordFailedCapiRequest(duration, eventName, data.error?.type || 'unknown_error')
       return NextResponse.json({ success: false, error: data }, { status: 400 })
     }
 
+    recordSuccessfulCapiRequest(duration, eventName)
     return NextResponse.json({ success: true, fb_trace_id: data.fbtrace_id })
   } catch (error) {
+    const duration = (performance.now() - startTime) / 1000
+    recordFailedCapiRequest(duration, eventName, 'internal_error')
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }

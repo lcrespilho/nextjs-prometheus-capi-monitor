@@ -1,4 +1,4 @@
-import ConversionButton from '../components/ConversionButton'
+import ConversionButton from '@/components/ConversionButton'
 
 export default function Home() {
   return (
