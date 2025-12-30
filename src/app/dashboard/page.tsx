@@ -127,6 +127,8 @@ async function getEventCounts() {
   }
 }
 
+import Link from 'next/link'
+
 export default async function DashboardPage() {
   // Fetch both data sources in parallel
   const [qualityEvents, eventCounts] = await Promise.all([
@@ -161,7 +163,12 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-900 text-white p-12">
-      <h1 className="text-3xl font-bold mb-8 text-blue-400">Dataset Quality Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-400">Dataset Quality Dashboard</h1>
+        <Link href="/" className="text-sm text-slate-400 hover:text-white transition-colors">
+          ← Back to Home
+        </Link>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event: any, i: number) => (
