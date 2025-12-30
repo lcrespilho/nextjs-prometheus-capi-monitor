@@ -11,6 +11,10 @@ export default function Home() {
           Go to Dashboard
         </Link>
 
+        <Link href="/api/metrics" className="text-blue-400 hover:text-blue-300 underline">
+          Go to Metrics
+        </Link>
+
         <p className="text-slate-400 text-center max-w-lg">
           This page demonstrates a Next.js App Router setup with Prometheus monitoring. Click the button below to
           simulate a conversion event sent to our custom Route Handler.

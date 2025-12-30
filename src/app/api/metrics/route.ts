@@ -8,9 +8,7 @@ export async function GET() {
 
     return new NextResponse(metrics, {
       status: 200,
-      headers: {
-        'Content-Type': register.contentType,
-      },
+      headers: { 'Content-Type': register.contentType },
     })
   } catch (error) {
     console.error('Error generating metrics:', error)

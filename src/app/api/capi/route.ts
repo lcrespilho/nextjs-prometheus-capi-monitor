@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const userAgent = request.headers.get('user-agent') || ''
 
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  const token = process.env.FB_ACCESS_TOKEN_APP
+  const token = process.env.FB_ACCESS_TOKEN
 
   // Construct the CAPI Payload
   const payload = {

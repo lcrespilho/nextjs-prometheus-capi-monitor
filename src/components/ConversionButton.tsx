@@ -21,7 +21,8 @@ export default function ConversionButton() {
       if (window.fbq) {
         console.log(`Firing Browser Pixel (Lead) - ID: ${eventId}`)
         window.fbq(
-          'track',
+          'trackSingle',
+          process.env.NEXT_PUBLIC_FB_PIXEL_ID,
           'Lead',
           { currency: 'USD', value: 10.0 }, // Event Data
           { eventID: eventId } // Deduplication Param

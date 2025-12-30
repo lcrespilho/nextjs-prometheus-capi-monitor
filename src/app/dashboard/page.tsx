@@ -34,10 +34,10 @@ interface DatasetQualityResponse {
 
 async function getQualityStats() {
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  const token = process.env.FB_ACCESS_TOKEN_DATASET_QUALITY_API
+  const token = process.env.FB_ACCESS_TOKEN
 
   if (!pixelId || !token) {
-    console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN_DATASET_QUALITY_API')
+    console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN')
     return []
   }
 
@@ -82,10 +82,10 @@ interface EventCountData {
 
 async function getEventCounts() {
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  const token = process.env.FB_ACCESS_TOKEN_APP // New token with ads_read
+  const token = process.env.FB_ACCESS_TOKEN // New token with ads_read
 
   if (!pixelId || !token) {
-    console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN_APP for stats')
+    console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN for stats')
     return {}
   }
 
