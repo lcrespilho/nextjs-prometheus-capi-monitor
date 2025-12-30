@@ -1,11 +1,10 @@
 'use client'
 import { useEffect } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Script from 'next/script'
 
 export default function FacebookPixel() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Manual PageView firing to support deduplication with CAPI
@@ -31,7 +30,7 @@ export default function FacebookPixel() {
         }),
       }).catch(err => console.error('Failed to send PageView CAPI:', err))
     }
-  }, [pathname, searchParams])
+  }, [pathname])
 
   return (
     <>
