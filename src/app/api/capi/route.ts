@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         event_id: body.event_id, // Important for deduplication // TODO: generate
         event_source_url: body.event_source_url,
         user_data: {
-          em: [body.user_data.email_hash], // SHA256 hashed email
+          ...(body.user_data?.email_hash ? { em: [body.user_data.email_hash] } : {}),
           client_ip_address: userIp,
           client_user_agent: userAgent,
           fbp: fbp,

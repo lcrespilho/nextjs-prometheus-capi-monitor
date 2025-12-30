@@ -8,10 +8,28 @@ export default function FacebookPixel() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // This triggers a PageView on route changes (SPA navigation)
+    // Manual PageView firing to support deduplication with CAPI
     if (window.fbq) {
-      // Não tem necessidade porque o fbq já faz isso automaticamente
-      // window.fbq('track', 'PageView')
+      // Generate a unique event ID for deduplication
+      const eventId = crypto.randomUUID()
+
+      // Fire Pixel Event
+      window.fbq('trackSingle', process.env.NEXT_PUBLIC_FB_PIXEL_ID, 'PageView', {}, { eventID: eventId })
+
+      // Fire CAPI Event (Server-side)
+      fetch('/api/capi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_name: 'PageView',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: eventId,
+          event_source_url: window.location.href,
+          user_data: {
+            // For PageView we usually don't have user info yet, but the server will pick up IP/User Agent/Cookies
+          }
+        }),
+      }).catch(err => console.error('Failed to send PageView CAPI:', err))
     }
   }, [pathname, searchParams])
 
@@ -30,8 +48,11 @@ export default function FacebookPixel() {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
+            
+            // Disable automatic PageView tracking to prevent double firing
+            fbq.disablePushState = true;
+            
             fbq('init', '${process.env.NEXT_PUBLIC_FB_PIXEL_ID}');
-            fbq('track', 'PageView');
           `,
         }}
       />

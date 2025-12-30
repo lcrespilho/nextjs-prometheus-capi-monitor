@@ -15,9 +15,6 @@ export default function ConversionButton() {
 
     // 1. Generate a Unique Event ID (Critical for Deduplication)
     const eventId = crypto.randomUUID()
-    // eslint-disable-next-line react-hooks/purity
-    const eventTime = Math.floor(Date.now() / 1000)
-    const email = 'lcrespilho@gmail.com'
 
     try {
       // 2. Fire Browser Pixel (The "Standard" Hit)
@@ -30,18 +27,18 @@ export default function ConversionButton() {
           { eventID: eventId } // Deduplication Param
         )
       }
-      
+
       // 3. Fire Server CAPI (The "Backup" Hit)
       const res = await fetch('/api/capi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_name: 'Lead',
-          event_time: eventTime,
+          event_time: Math.floor(Date.now() / 1000),
           event_id: eventId,
           event_source_url: window.location.href,
           user_data: {
-            email_hash: await hashEmail(email), // We must hash PII before sending!
+            email_hash: process.env.NEXT_PUBLIC_EMAIL_HASH,
           },
         }),
       })
@@ -57,17 +54,6 @@ export default function ConversionButton() {
       console.error(error)
       setStatus('System Error')
     }
-
-    // Reset status after 2 seconds
-    setTimeout(() => setStatus('Idle'), 3000)
-  }
-
-  // Helper to SHA256 hash email (Required by CAPI)
-  const hashEmail = async (email: string) => {
-    const msgBuffer = new TextEncoder().encode(email.toLowerCase())
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
   }
 
   return (

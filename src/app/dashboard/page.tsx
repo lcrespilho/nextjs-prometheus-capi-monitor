@@ -75,8 +75,89 @@ async function getQualityStats() {
   return events
 }
 
+interface EventCountData {
+  value: string
+  count: number
+}
+
+async function getEventCounts() {
+  const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
+  const token = process.env.FB_ACCESS_TOKEN_APP // New token with ads_read
+
+  if (!pixelId || !token) {
+    console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN_APP for stats')
+    return {}
+  }
+
+  // Get counts for last 24 hours
+  const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60)
+
+  // Reference: https://developers.facebook.com/docs/marketing-api/reference/ads-pixel/stats/
+  const endpoint = `https://graph.facebook.com/v24.0/${pixelId}/stats`
+  const params = new URLSearchParams({
+    aggregation: 'event_total_counts',
+    start_time: oneDayAgo.toString(),
+    access_token: token,
+  })
+
+  try {
+    const res = await fetch(`${endpoint}?${params.toString()}`, { next: { revalidate: 60 } })
+
+    if (!res.ok) {
+      const error = await res.json()
+      console.error('FB Stats API Error:', error)
+      return {}
+    }
+
+    const data = await res.json()
+    // Structure: { data: [ { start_time: "...", aggregation: "event_total_counts", data: [ { value: "Lead", count: 403 }, ... ] } ] }
+
+    const counts: Record<string, number> = {}
+
+    if (data.data && data.data.length > 0 && data.data[0].data) {
+      data.data[0].data.forEach((item: EventCountData) => {
+        counts[item.value] = item.count
+      })
+    }
+
+    return counts
+  } catch (err) {
+    console.error('Failed to fetch event counts:', err)
+    return {}
+  }
+}
+
 export default async function DashboardPage() {
-  const events = await getQualityStats()
+  // Fetch both data sources in parallel
+  const [qualityEvents, eventCounts] = await Promise.all([
+    getQualityStats(),
+    getEventCounts()
+  ])
+
+  // Merge the data
+  // We want to show all events that have EITHER quality data OR count data
+  const allEventNames = new Set([
+    ...qualityEvents.map(e => e.event_name),
+    ...Object.keys(eventCounts)
+  ])
+
+  const events = Array.from(allEventNames).map(name => {
+    const q = qualityEvents.find(e => e.event_name === name)
+    const count = eventCounts[name] || 0
+
+    return {
+      event_name: name,
+      composite_score: q?.composite_score || 0,
+      match_key_feedback: q?.match_key_feedback || [],
+      count: count
+    }
+  })
+
+  // Sort events: prioritized by score (desc), then count (desc)
+  events.sort((a, b) => {
+    if (b.composite_score !== a.composite_score) return b.composite_score - a.composite_score
+    return b.count - a.count
+  })
 
   return (
     <main className="min-h-screen bg-slate-900 text-white p-12">
@@ -84,49 +165,58 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event: any, i: number) => (
-          <div key={i} className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">{event.event_name}</h2>
-              <span
-                className={`px-2 py-1 rounded text-xs font-bold ${event.composite_score >= 6 ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'
-                  }`}
-              >
-                Score: {event.composite_score.toFixed(1)}/10
-              </span>
-            </div>
+          <div key={i} className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">{event.event_name}</h2>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-bold ${event.composite_score >= 6 ? 'bg-green-900 text-green-300' :
+                    event.composite_score > 0 ? 'bg-yellow-900 text-yellow-300' : 'bg-slate-700 text-slate-400'
+                    }`}
+                >
+                  Score: {event.composite_score.toFixed(1)}/10
+                </span>
+              </div>
 
-            <div className="space-y-4">
-              {/* Match Key Feedback */}
-              <div>
-                <div className="text-sm text-slate-400 mb-2">Match Key Coverage</div>
-                {event.match_key_feedback.length > 0 ? (
-                  <div className="space-y-2">
-                    {event.match_key_feedback.map((key: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center text-xs">
-                        <span className="text-slate-300 font-mono">{key.identifier}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400">{key.coverage.percentage.toFixed(1)}%</span>
-                          <div className="w-16 bg-slate-700 rounded-full h-1.5">
-                            <div
-                              className="bg-blue-500 h-1.5 rounded-full"
-                              style={{ width: `${key.coverage.percentage}%` }}
-                            ></div>
+              <div className="space-y-4">
+                {/* Match Key Feedback */}
+                <div>
+                  <div className="text-sm text-slate-400 mb-2">Match Key Coverage</div>
+                  {event.match_key_feedback.length > 0 ? (
+                    <div className="space-y-2">
+                      {event.match_key_feedback.map((key: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center text-xs">
+                          <span className="text-slate-300 font-mono">{key.identifier}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400">{key.coverage.percentage.toFixed(1)}%</span>
+                            <div className="w-16 bg-slate-700 rounded-full h-1.5">
+                              <div
+                                className="bg-blue-500 h-1.5 rounded-full"
+                                style={{ width: `${key.coverage.percentage}%` }}
+                              ></div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500">No match key data available</p>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">No match key data available</p>
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Event Counts */}
+            <div className="bg-slate-700/30 p-3 rounded flex justify-between items-center mt-6 border-t border-slate-700/50">
+              <span className="text-sm text-slate-400">Total Events (24h)</span>
+              <span className="text-xl font-mono text-blue-200">{event.count.toLocaleString()}</span>
             </div>
           </div>
         ))}
 
         {events.length === 0 && (
           <div className="col-span-full text-center py-12 bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
-            <p className="text-slate-400 mb-2">No Quality Data Available Yet</p>
+            <p className="text-slate-400 mb-2">No Quality Data or Events Available Yet</p>
             <p className="text-xs text-slate-500">
               Note: Facebook's Quality API typically requires ~24-48 hours of consistent data.
             </p>
