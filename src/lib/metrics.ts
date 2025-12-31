@@ -9,12 +9,12 @@ register.setDefaultLabels({
 })
 
 // Histogram to track CAPI request duration
-// Buckets: 200ms, 250ms, 300ms, 350ms, 400ms, 450ms, 500ms, 5000ms
+// Buckets: 200ms, 225ms, 250ms, 275ms, 300ms, 325ms, 350ms, 375ms, 400ms, 425ms, 450ms, 475ms, 500ms, 5000ms
 export const capiDurationHistogram = new Histogram({
   name: 'capi_request_duration_milliseconds',
   help: 'Duration of CAPI requests in milliseconds',
   labelNames: ['status', 'event_name'],
-  buckets: [200, 250, 300, 350, 400, 450, 500, 5000],
+  buckets: [200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 5000],
   registers: [register]
 })
 
