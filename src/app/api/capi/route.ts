@@ -25,8 +25,8 @@ export async function POST(request: Request) {
     data: [
       {
         event_name: eventName,
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: body.event_id, // Important for deduplication // TODO: generate
+        event_time: Math.random() < 0.95 ? Math.floor(Date.now() / 1000) : undefined, // adiciona 5% de falha em eventos CAPI
+        event_id: body.event_id,
         event_source_url: body.event_source_url,
         user_data: {
           ...(body.user_data?.email_hash ? { em: [body.user_data.email_hash] } : {}),
