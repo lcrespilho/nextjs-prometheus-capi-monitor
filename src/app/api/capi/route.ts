@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     data: [
       {
         event_name: eventName,
-        event_time: Math.random() < 0.95 ? Math.floor(Date.now() / 1000) : undefined, // adiciona 5% de falha em eventos CAPI
+        // event_time: Math.random() < 0.95 ? Math.floor(Date.now() / 1000) : undefined, // adiciona 5% de falha em eventos CAPI
+        event_time: Math.floor(Date.now() / 1000),
         event_id: body.event_id,
         event_source_url: body.event_source_url,
         user_data: {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     })
 
     const data = await response.json()
-    const duration = Math.round((performance.now() - startTime) / 1000) // Convert to seconds
+    const duration = Math.round((performance.now() - startTime)) // milliseconds
 
     if (!response.ok) {
       console.error('Facebook API Error:', data)
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     recordSuccessfulCapiRequest(duration, eventName)
     return NextResponse.json({ success: true, fb_trace_id: data.fbtrace_id })
   } catch (error) {
-    const duration = Math.round((performance.now() - startTime) / 1000)
+    const duration = Math.round((performance.now() - startTime)) // milliseconds
     recordFailedCapiRequest(duration, eventName, 'internal_error')
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
