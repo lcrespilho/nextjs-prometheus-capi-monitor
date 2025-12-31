@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     data: [
       {
         event_name: eventName,
-        event_time: body.event_time || Math.floor(Date.now() / 1000),
+        event_time: Math.floor(Date.now() / 1000),
         event_id: body.event_id, // Important for deduplication // TODO: generate
         event_source_url: body.event_source_url,
         user_data: {

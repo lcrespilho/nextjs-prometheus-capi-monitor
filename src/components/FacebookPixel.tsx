@@ -21,7 +21,6 @@ export default function FacebookPixel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_name: 'PageView',
-          event_time: Math.floor(Date.now() / 1000),
           event_id: eventId,
           event_source_url: window.location.href,
           user_data: {
