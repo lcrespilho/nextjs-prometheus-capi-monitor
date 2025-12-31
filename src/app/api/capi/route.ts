@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     })
 
     const data = await response.json()
-    const duration = (performance.now() - startTime) / 1000 // Convert to seconds
+    const duration = Math.round((performance.now() - startTime) / 1000) // Convert to seconds
 
     if (!response.ok) {
       console.error('Facebook API Error:', data)
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     recordSuccessfulCapiRequest(duration, eventName)
     return NextResponse.json({ success: true, fb_trace_id: data.fbtrace_id })
   } catch (error) {
-    const duration = (performance.now() - startTime) / 1000
+    const duration = Math.round((performance.now() - startTime) / 1000)
     recordFailedCapiRequest(duration, eventName, 'internal_error')
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
