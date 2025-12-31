@@ -9,12 +9,12 @@ register.setDefaultLabels({
 })
 
 // Histogram to track CAPI request duration
-// Buckets: 100ms, 500ms, 1s, 2s, 5s, 10s
+// Buckets: 200ms, 250ms, 300ms, 350ms, 400ms, 450ms, 500ms, 5000ms
 export const capiDurationHistogram = new Histogram({
-  name: 'capi_request_duration_seconds',
-  help: 'Duration of CAPI requests in seconds',
+  name: 'capi_request_duration_milliseconds',
+  help: 'Duration of CAPI requests in milliseconds',
   labelNames: ['status', 'event_name'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10],
+  buckets: [200, 250, 300, 350, 400, 450, 500, 5000],
   registers: [register]
 })
 
@@ -27,13 +27,13 @@ export const capiRequestsTotal = new Counter({
 })
 
 // Helper function to record successful CAPI request
-export function recordSuccessfulCapiRequest(durationSeconds: number, eventName: string) {
-  capiDurationHistogram.observe({ status: 'success', event_name: eventName }, durationSeconds)
+export function recordSuccessfulCapiRequest(durationMilliseconds: number, eventName: string) {
+  capiDurationHistogram.observe({ status: 'success', event_name: eventName }, durationMilliseconds)
   capiRequestsTotal.inc({ status: 'success', event_name: eventName })
 }
 
 // Helper function to record failed CAPI request
-export function recordFailedCapiRequest(durationSeconds: number, eventName: string, errorType: string) {
-  capiDurationHistogram.observe({ status: 'error', event_name: eventName }, durationSeconds)
+export function recordFailedCapiRequest(durationMilliseconds: number, eventName: string, errorType: string) {
+  capiDurationHistogram.observe({ status: 'error', event_name: eventName }, durationMilliseconds)
   capiRequestsTotal.inc({ status: 'error', event_name: eventName, error_type: errorType })
 }
