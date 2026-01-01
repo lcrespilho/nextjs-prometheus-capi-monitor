@@ -1,4 +1,9 @@
-export const dynamic = 'force-dynamic'
+// Revalidate this page (and all its fetches) every 5 seconds
+export const revalidate = 30
+// export const dynamic = 'force-dynamic'
+
+import { recordFailedQualityRequest, recordSuccessfulQualityRequest, recordFailedStatsRequest, recordSuccessfulStatsRequest } from '@/lib/metrics'
+import Link from 'next/link'
 
 // Match the actual API response structure from Facebook Dataset Quality API
 interface MatchKeyFeedback {
@@ -32,102 +37,83 @@ interface DatasetQualityResponse {
   web: WebEvent[]
 }
 
+interface EventCountData {
+  value: string
+  count: number
+}
+
+// Reference: https://developers.facebook.com/docs/marketing-api/conversions-api/dataset-quality-api/
 async function getQualityStats() {
+  const startTime = performance.now()
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
   const token = process.env.FB_ACCESS_TOKEN
-
   if (!pixelId || !token) {
     console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN')
     return []
   }
-
-  // Reference: https://developers.facebook.com/docs/marketing-api/conversions-api/dataset-quality-api/
   const endpoint = 'https://graph.facebook.com/v24.0/dataset_quality'
   const params = new URLSearchParams({
     dataset_id: pixelId,
     access_token: token,
     fields: 'web{event_match_quality,event_name}',
-    // fields: 'web{event_match_quality{composite_score,match_key_feedback,diagnostics},event_name}', // it's the same as above
   })
-
-  const res = await fetch(`${endpoint}?${params.toString()}`, {
-    next: { revalidate: 0 },
-    cache: 'no-store'
-  })
-
+  const res = await fetch(`${endpoint}?${params.toString()}`)
+  const duration = Math.round(performance.now() - startTime) // milliseconds
   if (!res.ok) {
-    const errorData = await res.json()
-    console.error('FB Dataset Quality API Error:', errorData)
+    const error = await res.json()
+    console.error('FB Dataset Quality API Error:', error)
+    recordFailedQualityRequest(duration, error.error?.type)
     return []
   }
-
+  recordSuccessfulQualityRequest(duration)
   const data: DatasetQualityResponse = await res.json()
-  // console.log('> data:', JSON.stringify(data, null, 2))
-
+  console.log('>>> recordSuccessfulQualityRequest duration:', duration)
   // Parse the web events array
   const events = (data.web || []).map(event => ({
     event_name: event.event_name,
     composite_score: event.event_match_quality?.composite_score || 0,
     match_key_feedback: event.event_match_quality?.match_key_feedback || [],
   }))
-
-  // console.log('> event:', JSON.stringify(events, null, 2))
   return events
 }
 
-interface EventCountData {
-  value: string
-  count: number
-}
-
+// Reference: https://developers.facebook.com/docs/marketing-api/reference/ads-pixel/stats/
 async function getEventCounts() {
+  const startTime = performance.now()
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
   const token = process.env.FB_ACCESS_TOKEN // New token with ads_read
-
   if (!pixelId || !token) {
     console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN for stats')
     return {}
   }
-
   // Get counts for last 24 hours
   const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60)
-
-  // Reference: https://developers.facebook.com/docs/marketing-api/reference/ads-pixel/stats/
   const endpoint = `https://graph.facebook.com/v24.0/${pixelId}/stats`
   const params = new URLSearchParams({
     aggregation: 'event_total_counts',
     start_time: oneDayAgo.toString(),
     access_token: token,
   })
-
-  try {
-    const res = await fetch(`${endpoint}?${params.toString()}`, { next: { revalidate: 60 } })
-
-    if (!res.ok) {
-      const error = await res.json()
-      console.error('FB Stats API Error:', error)
-      return {}
-    }
-
-    const data = await res.json()
-    // Structure: { data: [ { start_time: "...", aggregation: "event_total_counts", data: [ { value: "Lead", count: 403 }, ... ] } ] }
-
-    const counts: Record<string, number> = {}
-
-    if (data.data && data.data.length > 0 && data.data[0].data) {
-      data.data[0].data.forEach((item: EventCountData) => {
-        counts[item.value] = item.count
-      })
-    }
-
-    return counts
-  } catch (err) {
-    console.error('Failed to fetch event counts:', err)
+  const res = await fetch(`${endpoint}?${params.toString()}`)
+  const duration = Math.round(performance.now() - startTime) // milliseconds
+  if (!res.ok) {
+    const error = await res.json()
+    console.error('FB Stats API Error:', error)
+    recordFailedStatsRequest(duration, error.error?.type)
     return {}
   }
+  recordSuccessfulStatsRequest(duration)
+  const data = await res.json()
+  console.log('>>> recordSuccessfulStatsRequest duration:', duration)
+  // Structure: { data: [ { start_time: "...", aggregation: "event_total_counts", data: [ { value: "Lead", count: 403 }, ... ] } ] }
+  const counts: Record<string, number> = {}
+  if (data.data && data.data.length > 0 && data.data[0].data) {
+    data.data[0].data.forEach((item: EventCountData) => {
+      counts[item.value] = item.count
+    })
+  }
+  return counts
 }
-
-import Link from 'next/link'
 
 export default async function DashboardPage() {
   // Fetch both data sources in parallel

@@ -1,29 +1,52 @@
 import { Registry, Counter, Histogram } from 'prom-client'
 
-// Create a custom registry for our application
-export const register = new Registry()
+// Use a global variable to ensure the registry is a singleton across the application,
+// specifically between the Next.js App Router (RSC) and API Routes contexts.
+// @ts-ignore
+const globalAny = global as any
+
+export const register = globalAny.prometheusRegistry || new Registry()
+
+// In development, save the registry to the global object
+if (process.env.NODE_ENV !== 'production') {
+  globalAny.prometheusRegistry = register
+}
 
 // Add default labels to all metrics
+// We wrap this in a check or just let it overwrite (it's safe to overwrite)
 register.setDefaultLabels({
   app: 'nextjs-capi-monitor'
 })
 
+// Helpers to avoid "Metric already registered" errors during hot reload
+function getOrCreateHistogram(config: any): Histogram<string> {
+  const existing = register.getSingleMetric(config.name) as Histogram<string>
+  if (existing) return existing
+  return new Histogram({ ...config, registers: [register] })
+}
+
+function getOrCreateCounter(config: any): Counter<string> {
+  const existing = register.getSingleMetric(config.name) as Counter<string>
+  if (existing) return existing
+  return new Counter({ ...config, registers: [register] })
+}
+
+const buckets = [200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 5000]
+
 // Histogram to track CAPI request duration
-// Buckets: 200ms, 225ms, 250ms, 275ms, 300ms, 325ms, 350ms, 375ms, 400ms, 425ms, 450ms, 475ms, 500ms, 5000ms
-export const capiDurationHistogram = new Histogram({
+// Buckets: 200ms...5000ms
+const capiDurationHistogram = getOrCreateHistogram({
   name: 'capi_request_duration_milliseconds',
   help: 'Duration of CAPI requests in milliseconds',
   labelNames: ['status', 'event_name'],
-  buckets: [200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 5000],
-  registers: [register]
+  buckets: buckets,
 })
 
 // Counter to track total CAPI requests
-export const capiRequestsTotal = new Counter({
+const capiRequestsTotal = getOrCreateCounter({
   name: 'capi_requests_total',
   help: 'Total number of CAPI requests',
   labelNames: ['status', 'event_name', 'error_type'],
-  registers: [register]
 })
 
 // Helper function to record successful CAPI request
@@ -36,4 +59,60 @@ export function recordSuccessfulCapiRequest(durationMilliseconds: number, eventN
 export function recordFailedCapiRequest(durationMilliseconds: number, eventName: string, errorType: string) {
   capiDurationHistogram.observe({ status: 'error', event_name: eventName }, durationMilliseconds)
   capiRequestsTotal.inc({ status: 'error', event_name: eventName, error_type: errorType })
+}
+
+
+// Histogram to track Dataset Quality API request duration
+const qualityDurationHistogram = getOrCreateHistogram({
+  name: 'quality_request_duration_milliseconds',
+  help: 'Duration of Dataset Quality API requests in milliseconds',
+  labelNames: ['status'],
+  buckets: buckets,
+})
+
+// Counter to track total Dataset Quality API requests
+const qualityRequestsTotal = getOrCreateCounter({
+  name: 'quality_requests_total',
+  help: 'Total number of Dataset Quality API requests',
+  labelNames: ['status', 'error_type'],
+})
+
+// Helper function to record successful Dataset Quality API request
+export function recordSuccessfulQualityRequest(durationMilliseconds: number) {
+  qualityDurationHistogram.observe({ status: 'success' }, durationMilliseconds)
+  qualityRequestsTotal.inc({ status: 'success' })
+}
+
+// Helper function to record failed Dataset Quality API request
+export function recordFailedQualityRequest(durationMilliseconds: number, errorType: string) {
+  qualityDurationHistogram.observe({ status: 'error' }, durationMilliseconds)
+  qualityRequestsTotal.inc({ status: 'error', error_type: errorType })
+}
+
+
+// Histogram to track Stats API request duration
+const statsDurationHistogram = getOrCreateHistogram({
+  name: 'stats_request_duration_milliseconds',
+  help: 'Duration of Stats API requests in milliseconds',
+  labelNames: ['status'],
+  buckets: buckets,
+})
+
+// Counter to track total Stats API requests
+const statsRequestsTotal = getOrCreateCounter({
+  name: 'stats_requests_total',
+  help: 'Total number of Stats API requests',
+  labelNames: ['status', 'error_type'],
+})
+
+// Helper function to record successful Stats API request
+export function recordSuccessfulStatsRequest(durationMilliseconds: number) {
+  statsDurationHistogram.observe({ status: 'success' }, durationMilliseconds)
+  statsRequestsTotal.inc({ status: 'success' })
+}
+
+// Helper function to record failed Stats API request
+export function recordFailedStatsRequest(durationMilliseconds: number, errorType: string) {
+  statsDurationHistogram.observe({ status: 'error' }, durationMilliseconds)
+  statsRequestsTotal.inc({ status: 'error', error_type: errorType })
 }
