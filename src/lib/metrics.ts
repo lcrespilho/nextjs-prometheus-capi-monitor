@@ -5,12 +5,7 @@ import { Registry, Counter, Histogram } from 'prom-client'
 // @ts-ignore
 const globalAny = global as any
 
-export const register = globalAny.prometheusRegistry || new Registry()
-
-// In development, save the registry to the global object
-if (process.env.NODE_ENV !== 'production') {
-  globalAny.prometheusRegistry = register
-}
+export const register = globalAny.prometheusRegistry = globalAny.prometheusRegistry || new Registry()
 
 // Add default labels to all metrics
 // We wrap this in a check or just let it overwrite (it's safe to overwrite)

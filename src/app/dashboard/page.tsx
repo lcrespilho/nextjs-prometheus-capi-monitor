@@ -1,6 +1,5 @@
-// Revalidate this page (and all its fetches) every 5 seconds
-export const revalidate = 30
-// export const dynamic = 'force-dynamic'
+// Revalidate this page (and all its fetches) every now and then
+export const revalidate = 10
 
 import { recordFailedQualityRequest, recordSuccessfulQualityRequest, recordFailedStatsRequest, recordSuccessfulStatsRequest } from '@/lib/metrics'
 import Link from 'next/link'
@@ -67,7 +66,6 @@ async function getQualityStats() {
   }
   recordSuccessfulQualityRequest(duration)
   const data: DatasetQualityResponse = await res.json()
-  console.log('>>> recordSuccessfulQualityRequest duration:', duration)
   // Parse the web events array
   const events = (data.web || []).map(event => ({
     event_name: event.event_name,
@@ -81,7 +79,7 @@ async function getQualityStats() {
 async function getEventCounts() {
   const startTime = performance.now()
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  const token = process.env.FB_ACCESS_TOKEN // New token with ads_read
+  const token = process.env.FB_ACCESS_TOKEN
   if (!pixelId || !token) {
     console.error('Missing FB_PIXEL_ID or FB_ACCESS_TOKEN for stats')
     return {}
@@ -104,7 +102,6 @@ async function getEventCounts() {
   }
   recordSuccessfulStatsRequest(duration)
   const data = await res.json()
-  console.log('>>> recordSuccessfulStatsRequest duration:', duration)
   // Structure: { data: [ { start_time: "...", aggregation: "event_total_counts", data: [ { value: "Lead", count: 403 }, ... ] } ] }
   const counts: Record<string, number> = {}
   if (data.data && data.data.length > 0 && data.data[0].data) {
