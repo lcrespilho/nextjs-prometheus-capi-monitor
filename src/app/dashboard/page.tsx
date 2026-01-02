@@ -93,6 +93,7 @@ async function getEventCounts() {
     access_token: token,
   })
   const res = await fetch(`${endpoint}?${params.toString()}`)
+  console.log('>>> dashboard stats fetch')
   const duration = Math.round(performance.now() - startTime) // milliseconds
   if (!res.ok) {
     const error = await res.json()
