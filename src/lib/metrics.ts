@@ -26,10 +26,10 @@ function getOrCreateCounter(config: any): Counter<string> {
   return new Counter({ ...config, registers: [register] })
 }
 
-const buckets = [200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 5000]
+const buckets = [50, 75, 100, 125, 150, 175, 200, 2000]
 
 // Histogram to track CAPI request duration
-// Buckets: 200ms...5000ms
+// Buckets: 50ms...2000ms
 const capiDurationHistogram = getOrCreateHistogram({
   name: 'capi_request_duration_milliseconds',
   help: 'Duration of CAPI requests in milliseconds',
