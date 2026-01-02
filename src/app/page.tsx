@@ -7,11 +7,11 @@ export default function Home() {
       <div className="z-10 max-w-5xl w-full items-center justify-between text-sm flex flex-col gap-8">
         <h1 className="text-4xl font-bold text-center">CAPI Monitor Dashboard</h1>
 
-        <Link href="/dashboard" className="text-blue-400 hover:text-blue-300 underline">
+        <Link href="/dashboard" prefetch={false} className="text-blue-400 hover:text-blue-300 underline">
           Go to Dashboard
         </Link>
 
-        <Link href="/api/metrics" className="text-blue-400 hover:text-blue-300 underline">
+        <Link href="/api/metrics" prefetch={false} className="text-blue-400 hover:text-blue-300 underline">
           Go to Metrics
         </Link>
 
