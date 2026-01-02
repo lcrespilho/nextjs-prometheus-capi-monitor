@@ -9,9 +9,11 @@ declare global {
 
 export default function ConversionButton() {
   const [status, setStatus] = useState<string>('Idle')
+  const [loading, setLoading] = useState(false)
 
   const triggerConversion = async () => {
     setStatus('Processing...')
+    setLoading(true)
 
     // 1. Generate a Unique Event ID (Critical for Deduplication)
     const eventId = crypto.randomUUID()
@@ -53,6 +55,8 @@ export default function ConversionButton() {
     } catch (error) {
       console.error(error)
       setStatus('System Error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -60,9 +64,10 @@ export default function ConversionButton() {
     <div className="flex flex-col items-center gap-4">
       <button
         onClick={triggerConversion}
-        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-lg shadow-green-900/20"
+        disabled={loading}
+        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors shadow-lg shadow-green-900/20"
       >
-        Trigger &quot;Lead&quot; Event (Hybrid)
+        {loading ? 'Processing...' : 'Trigger "Lead" Event (Hybrid)'}
       </button>
       <span className="text-xs text-slate-400 font-mono max-w-md text-center break-all">{status}</span>
     </div>
