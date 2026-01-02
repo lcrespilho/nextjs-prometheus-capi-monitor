@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { recordSuccessfulCapiRequest, recordFailedCapiRequest } from '@/lib/metrics'
 
 export async function POST(request: Request) {
-  const startTime = performance.now()
   const body = await request.json()
   const eventName = body.event_name || 'unknown'
 
@@ -41,26 +40,30 @@ export async function POST(request: Request) {
     ],
   }
 
+  const startTime = performance.now()
   try {
     const response = await fetch(`https://graph.facebook.com/v24.0/${pixelId}/events?access_token=${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-
+    const duration = Math.round(performance.now() - startTime)
     const data = await response.json()
-    const duration = Math.round((performance.now() - startTime)) // milliseconds
 
     if (!response.ok) {
       console.error('Facebook API Error:', data)
       recordFailedCapiRequest(duration, eventName, data.error?.type || 'unknown_error')
-      return NextResponse.json({ success: false, error: data }, { status: 400 })
+      const res = NextResponse.json({ success: false, error: data }, { status: 400 })
+      res.headers.set('Server-Timing', `capi;dur=${duration};desc="Facebook CAPI"`)
+      return res
     }
 
     recordSuccessfulCapiRequest(duration, eventName)
-    return NextResponse.json({ success: true, fb_trace_id: data.fbtrace_id })
+    const res = NextResponse.json({ success: true, fb_trace_id: data.fbtrace_id })
+    res.headers.set('Server-Timing', `capi;dur=${duration};desc="Facebook CAPI"`)
+    return res
   } catch (error) {
-    const duration = Math.round((performance.now() - startTime)) // milliseconds
+    const duration = Math.round(performance.now() - startTime)
     recordFailedCapiRequest(duration, eventName, 'internal_error')
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
