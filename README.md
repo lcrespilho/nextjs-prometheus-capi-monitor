@@ -83,6 +83,71 @@ The application exposes the following custom metrics:
 | `stats_request_duration_milliseconds` | Histogram | Latency of Stats API | `status` |
 | `stats_requests_total` | Counter | Total Stats API requests | `status`, `error_type` |
 
-## Deployment
+## Deploy to Vercel
 
-This is a standard Next.js application. You can deploy it easily on [Vercel](https://vercel.com) or any containerized environment (Docker, Kubernetes). Ensure the `FB_ACCESS_TOKEN` is set as an environment variable in your deployment.
+This is a standard Next.js application. You can deploy it easily on [Vercel](https://vercel.com). Ensure the `FB_ACCESS_TOKEN` is set as an environment variable in your deployment.
+
+## Deploy to GCP (VM with PM2 and nginx reverse proxy)
+
+
+### 1. Log on the VM (ssh) and build from repo:
+
+```bash
+ssh <user>@<vm-ip>
+git clone git@github.com:lcrespilho/nextjs-prometheus-capi-monitor.git
+cd nextjs-prometheus-capi-monitor
+npm install
+npm run build
+```
+
+[Configure .env.local Environment](#2-environment-setup)
+
+### 2. Start using PM2
+
+```bash
+pm2 start pm2_ecosystem.config.js
+pm2 save
+```
+
+### 3. Configure nginx
+
+```bash
+# Adjust nginx_capimonitor.conf to your needs (e.g, server_name, ssl_certificate, ssl_certificate_key)
+sudo cp nginx_capimonitor.conf /etc/nginx/sites-available/nextjs-prometheus-capi-monitor
+sudo ln -s /etc/nginx/sites-available/nextjs-prometheus-capi-monitor /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 4. DNS/SSL Configuration
+
+Adjust your subdomain record on DNS server according to `server_name` on nginx_capimonitor.conf.
+Also add the subdomain hostname to your SSL certificate, if it is not a wildcard certificate.
+
+Your application should be accessible at https://nextjsprometheuscapimonitor.louren.co.in
+
+
+## curl endpoints (just for fun)
+
+```bash
+ACCESS_TOKEN="...facebook access token..."
+
+# show token permissions
+curl -X GET -G \
+  -d access_token=$ACCESS_TOKEN \
+  https://graph.facebook.com/v24.0/me/permissions | jq
+
+# show stats api (event count)
+curl -X GET -G \
+  -d aggregation=event_total_counts \
+  -d start_time=$(( $(date +%s) - 24*60*60 )) \
+  -d access_token=$ACCESS_TOKEN \
+  https://graph.facebook.com/v24.0/587024498387691/stats | jq
+
+# show dataset quality api (CAPI quality)
+curl -X GET -G \
+  -d dataset_id=587024498387691 \
+  -d "fields=web{event_match_quality,event_name}" \
+  -d access_token=$ACCESS_TOKEN \
+  https://graph.facebook.com/v24.0/dataset_quality | jq
+```
