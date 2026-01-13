@@ -27,5 +27,7 @@ test('Stress Test in Production', async ({ page }) => {
 
     // Valida que o status da resposta do Pixel seja 200 ou 302 (redirects são normais)
     expect([200, 302]).toContain(pixel.status())
+
+    process.stdout.write('.')
   }
 })

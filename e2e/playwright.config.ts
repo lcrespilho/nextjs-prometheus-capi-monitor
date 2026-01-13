@@ -4,7 +4,12 @@ export default defineConfig({
   testDir: './tests',
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'line',
+  reporter: 'html',
+  use: {
+    trace: 'on',
+    video: 'on',
+    screenshot: 'on',
+  },
   projects: [
     {
       name: 'chromium',
