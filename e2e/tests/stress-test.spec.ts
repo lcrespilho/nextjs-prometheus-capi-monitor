@@ -1,19 +1,25 @@
 import { test, expect } from '@playwright/test'
 
+const N = 200
+const TESTTIMEOUT = 600_000 // 10 minutes
+
 test('Stress Test in Production', async ({ page }) => {
-  test.setTimeout(600_000) // 10 minutes
+  test.setTimeout(TESTTIMEOUT)
 
-  await Promise.all([
-    page.goto('https://nextjsprometheuscapimonitor.louren.co.in/?fbclid=asdfaskdjfasldkfjasdf'),
-    page.waitForResponse(/facebook\.com\/tr.*ev=PageView/),
-  ])
-  await page.waitForTimeout(2000)
+  await page.goto('https://nextjsprometheuscapimonitor.louren.co.in/?fbclid=asdfaskdjfasldkfjasdf')
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < N; i++) {
     const [, pixel, capi] = await Promise.all([
       page.getByRole('button', { name: 'Trigger "Lead" Event (Hybrid)' }).click(),
       page.waitForResponse(/facebook\.com\/tr\/\?id=587024498387691&ev=Lead&/),
-      page.waitForResponse('https://nextjsprometheuscapimonitor.louren.co.in/api/capi'),
+      page.waitForResponse(async response => {
+        if (response.url().includes('https://nextjsprometheuscapimonitor.louren.co.in/api/capi')) {
+          const postData = JSON.parse(response.request().postData() || '{}')
+          return postData.event_name === 'Lead'
+        } else {
+          return false
+        }
+      }),
     ])
 
     const pixelEventId = new URLSearchParams(pixel.url().split('?')[1]).get('eid')
@@ -28,6 +34,6 @@ test('Stress Test in Production', async ({ page }) => {
     // Valida que o status da resposta do Pixel seja 200 ou 302 (redirects são normais)
     expect([200, 302]).toContain(pixel.status())
 
-    process.stdout.write('.')
+    if (i % 10 === 0) console.log(`Run ${i} of ${N} at ${Math.round(performance.now() / 1000)}s.`)
   }
 })
