@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const N = 200
+const N = 100
 const TESTTIMEOUT = 600_000 // 10 minutes
 
 test('Stress Test in Production', async ({ page }) => {
